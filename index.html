@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS AI</title>
+  <style>
+    body {
+      background-color: #0b0e14;
+      color: #00f0ff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .arc-reactor {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 4px solid #00f0ff;
+      box-shadow: 0 0 20px #00f0ff, inset 0 0 20px #00f0ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .arc-reactor.active {
+      box-shadow: 0 0 40px #00f0ff, inset 0 0 30px #00f0ff;
+      transform: scale(1.05);
+    }
+    .core {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #e0ffff;
+      box-shadow: 0 0 15px #fff;
+    }
+    .chat-box {
+      width: 100%;
+      max-width: 400px;
+      background: rgba(16, 23, 38, 0.8);
+      border: 1px solid #00f0ff33;
+      border-radius: 12px;
+      padding: 15px;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+    }
+    .msg { margin: 8px 0; font-size: 14px; }
+    .user { color: #ffffff; text-align: right; }
+    .jarvis { color: #00f0ff; text-align: left; }
+    .controls { display: flex; gap: 10px; width: 100%; max-width: 400px; }
+    input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #00f0ff55;
+      background: #000;
+      color: #fff;
+    }
+    button {
+      padding: 12px 20px;
+      background: #00f0ff;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="arc-reactor" id="reactor" onclick="startVoiceInput()">
+    <div class="core"></div>
+  </div>
+
+  <div class="chat-box" id="chat">
+    <div class="msg jarvis">JARVIS listo para recibir órdenes, Marco.</div>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="userInput" placeholder="Escribe o toca el reactor..." />
+    <button onclick="sendMsg()">Enviar</button>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://jarvis-backend-01hl.onrender.com";
+
+    async function sendMsg() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMsg(text, 'user');
+      input.value = '';
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: 'marco-mobile', message: text })
+        });
+        
+        const data = await res.json();
+        appendMsg(data.text, 'jarvis');
+
+        if (data.audio) {
+          const audio = new Audio("data:audio/mp3;base64," + data.audio);
+          audio.play();
+        }
+      } catch (e) {
+        appendMsg("Error al conectar con el servidor.", 'jarvis');
+      }
+    }
+
+    function appendMsg(text, sender) {
+      const chat = document.getElementById('chat');
+      const div = document.createElement('div');
+      div.className = `msg ${sender}`;
+      div.innerText = (sender === 'user' ? "Tú: " : "JARVIS: ") + text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function startVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Tu navegador no soporta reconocimiento de voz.");
+        return;
+      }
+      const rec = new SpeechRecognition();
+      rec.lang = 'es-ES';
+      document.getElementById('reactor').classList.add('active');
+      rec.start();
+      rec.onresult = (e) => {
+        document.getElementById('userInput').value = e.results[0][0].transcript;
+        document.getElementById('reactor').classList.remove('active');
+        sendMsg();
+      };
+      rec.onerror = () => document.getElementById('reactor').classList.remove('active');
+    }
+  </script>
+</body>
+</html>
